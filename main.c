@@ -32,6 +32,9 @@ Node *newNode(char s[]) {
         if(n->word)
             strcpy(n->word, s);
 
+        char *pos;
+        if (pos=strchr(n->word, '\n')) *pos = '\0';
+
         DEBUG("new Node Line %s\n", n->word);
 
         n->left = n->right = NULL;
@@ -41,17 +44,14 @@ Node *newNode(char s[]) {
     return (Node*) NULL;
 }
 
+int max (int x, int y) { return x > y? x : y;}
+
 int getTreeHeight(Node *n) {
-    if (!n) return 0;
-    int rHeight = getTreeHeight(n->right);
-    int lHeight = getTreeHeight(n->left);
-    if(lHeight > rHeight) return 1 + lHeight;
-    return 1 + rHeight;
+    if (!n) return -1;
+    return 1 + max(getTreeHeight(n->right), getTreeHeight(n->left));
 }
 
 void insert(Node *newNode, Node **treeRoot) {
-
-
     if (!*treeRoot) {
         *treeRoot = newNode;
         DEBUG("tree root in insert %d\n", treeRoot);
@@ -102,7 +102,6 @@ Tree *readLines(char filename[]) {
     return tree;
 }
 
-
 Node* getParent(Node* root, char word[]){
     if(!root) return NULL;
     Node * parent = NULL;
@@ -122,11 +121,13 @@ Node* getParent(Node* root, char word[]){
 
 
 Node* getDepthL(Node* temp){
+    if(!temp) return NULL;
     if(!temp->left) return temp;
     return getDepthL(temp->left);
 }
 
 Node* getDepthR(Node* temp){
+    if(!temp) return NULL;
     if(!temp->right) return temp;
     return getDepthR(temp->right);
 }
@@ -145,9 +146,7 @@ void getSuccessorPredecessor(Node* root, Node** pre, Node** suc, Node* node){
     if(strcasecmp(node->word, root->word)>0){
         *pre = root;
         getSuccessorPredecessor(root->right, &(*pre), &(*suc), node);
-    }
-
-    else{
+    }else{
         *suc = root;
         getSuccessorPredecessor(root->left, &(*pre), &(*suc), node);
     }
@@ -160,27 +159,37 @@ void suggest(Node* root,Node* node, char word[]){
 
     getSuccessorPredecessor(root, &pre, &suc, node);
 
-    printf("Suggestions : %s", parent->word);
-    printf(", %s", suc->word);
-    printf(", %s", pre->word);
+    if(parent)
+        printf("Suggestions : %s", parent->word);
+    if(suc)
+        printf(", %s", suc->word);
+    if(pre)
+        printf(", %s", pre->word);
     printf("\n");
 }
 
-Node * searchWord(Node **root, char word[]) {
-    if ((!(*root)->right && !(*root)->left) || !strcasecmp((*root)->word, word)) return *root;
-    if (strcasecmp((*root)->word, word) > 0) return searchWord(&(*root)->left, word);
-    return searchWord(&(*root)->right, word);
+Node * searchWord(Node* root, char word[]){
+    Node * prev = NULL;
+    while (root){
+        prev = root;
+        if(strcasecmp(root->word, word) > 0)
+            root = root->left;
+        else if (strcasecmp(root->word, word) < 0)
+            root = root->right;
+        else if (strcasecmp(root->word, word)==0)
+            return root;
+    }
+    return prev;
 }
 
 void isCorrectWord(char word[], Node* root){
-    printf("%s - ", word);
-    Node * searchedNode = searchWord(&root, word);
-
-    printf("search word %s \n", searchedNode->word);
-    if(!strcasecmp(searchedNode->word, word)) printf("CORRECT\n");
-    else {
-        printf("Incorrect, ");
-        suggest(root, searchedNode, word);
+    Node * searchedNode = searchWord(root, word);
+    if(searchedNode) {
+        if (!strcasecmp(searchedNode->word, word)) printf("CORRECT\n");
+        else {
+            printf("Incorrect, ");
+            suggest(root, searchedNode, word);
+        }
     }
 }
 
@@ -199,12 +208,14 @@ int main() {
 
     printf("Height = %d\n", getTreeHeight(tree->root));
     printf("_______________________________________________\n");
+
     while(1){
         printf("Enter a sentence :\n");
 
         if(fgets(sentence, S_LENGTH, stdin))
         {
-            sentence[S_LENGTH] = '\0';
+            char *pos;
+            if (pos=strchr(sentence, '\n')) *pos = '\0';
             checkWords(sentence, tree);
         }
     }
